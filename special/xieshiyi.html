@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>谢识衣语录弹窗</title>
     <style>
-        /* 全局样式：修复手机端基础适配 */
+        /* 全局样式 */
         * {
             margin: 0;
             padding: 0;
@@ -29,7 +29,7 @@
             padding: 20px 10px;
             transition: background-color 0.5s ease, background-image 0.5s ease;
         }
-        /* 配置面板：自适应手机宽度 */
+        /* 配置面板：自适应 */
         .config-panel {
             background-color: #fff;
             padding: 15px;
@@ -43,7 +43,7 @@
         .config-panel.hidden {
             display: none;
         }
-        /* 功能按钮：手机端位置优化 */
+        /* 功能按钮 */
         .show-panel-btn, .share-btn {
             position: fixed;
             padding: 8px 15px;
@@ -67,7 +67,7 @@
         .show-panel-btn.show, .share-btn.show {
             display: block;
         }
-        /* 配置项样式：手机端字体和间距优化 */
+        /* 配置项样式 */
         .config-item {
             margin-bottom: 12px;
         }
@@ -122,34 +122,68 @@
             color: #999;
             margin-top: 5px;
         }
-        /* 弹窗通用样式：核心修复手机端尺寸 */
-        .popup {
-            position: absolute;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-size: 16px;
-            z-index: 9999;
-            cursor: move;
-            color: #000;
-            width: 75%;
-            max-width: 400px;
-            height: auto;
-            min-height: 100px;
-            word-wrap: break-word; /* 手机端文字换行 */
+
+        /* ========== 电脑端弹窗样式（屏幕≥768px） ========== */
+        @media screen and (min-width: 768px) {
+            .popup {
+                position: absolute;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 15px rgba(255,255,255,0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-size: 20px;
+                z-index: 9999;
+                cursor: move;
+                color: #000;
+                width: 40%; /* 电脑端弹窗宽度 */
+                max-width: 450px;
+                height: auto;
+                min-height: 120px;
+                word-wrap: break-word;
+            }
+            .init-popup {
+                background-color: #87CEEB;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 10000;
+            }
         }
-        /* 初始弹窗样式 */
-        .init-popup {
-            background-color: #87CEEB;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10000;
+
+        /* ========== 手机端弹窗样式（屏幕<768px） ========== */
+        @media screen and (max-width: 767px) {
+            .popup {
+                position: absolute;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 0 15px rgba(255,255,255,0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-size: 16px;
+                z-index: 9999;
+                cursor: move;
+                color: #000;
+                width: 75%; /* 手机端弹窗宽度 */
+                max-width: 350px;
+                height: auto;
+                min-height: 100px;
+                word-wrap: break-word;
+            }
+            .init-popup {
+                background-color: #87CEEB;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 10000;
+            }
         }
+
+        /* 弹窗通用样式 */
         .close-btn {
             position: absolute;
             top: 5px;
@@ -158,7 +192,7 @@
             cursor: pointer;
             color: #000;
         }
-        /* 分享弹窗样式：手机端适配 */
+        /* 分享弹窗样式 */
         .share-modal {
             position: fixed;
             top: 0;
@@ -415,7 +449,7 @@
             }
         }
 
-        // 创建单个语录弹窗（修复手机端位置）
+        // 创建单个语录弹窗（中间优先的位置算法）
         function createSingleQuotePopup(quotes) {
             const quote = quotes[Math.floor(Math.random() * quotes.length)];
             const color = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -424,20 +458,31 @@
             popup.className = 'popup';
             popup.style.backgroundColor = color;
             popup.innerHTML = `<div>${quote}</div>`;
+            document.body.appendChild(popup);
 
-            // 确保弹窗在屏幕内
+            // 确保弹窗渲染后计算尺寸
             setTimeout(() => {
                 const popupWidth = popup.offsetWidth;
                 const popupHeight = popup.offsetHeight;
-                const screenWidth = window.innerWidth - popupWidth;
-                const screenHeight = window.innerHeight - popupHeight;
-                const x = Math.max(0, Math.floor(Math.random() * screenWidth));
-                const y = Math.max(0, Math.floor(Math.random() * screenHeight));
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+
+                // ========== 核心：中间优先的随机位置 ==========
+                // 限制随机范围在屏幕中间80%的区域（左右各留10%，上下各留10%）
+                const centerX = screenWidth / 2;
+                const centerY = screenHeight / 2;
+                const rangeX = screenWidth * 0.4; // 左右各40%的范围
+                const rangeY = screenHeight * 0.4; // 上下各40%的范围
+
+                // 计算随机位置：围绕中心点±40%的范围，且不超出屏幕
+                const x = Math.max(0, Math.min(centerX + (Math.random() - 0.5) * 2 * rangeX - popupWidth / 2, screenWidth - popupWidth));
+                const y = Math.max(0, Math.min(centerY + (Math.random() - 0.5) * 2 * rangeY - popupHeight / 2, screenHeight - popupHeight));
+
                 popup.style.left = `${x}px`;
                 popup.style.top = `${y}px`;
             }, 0);
 
-            document.body.appendChild(popup);
+            // 可拖动
             makeDraggable(popup);
 
             // 点击关闭
@@ -448,7 +493,7 @@
             });
         }
 
-        // 可拖动函数（优化手机触摸）
+        // 可拖动函数（优化触摸）
         function makeDraggable(element) {
             // 鼠标事件
             element.addEventListener('mousedown', startDrag);
