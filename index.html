@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>专属惊喜</title>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "微软雅黑", sans-serif;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body {
+            min-height: 100vh;
+            background-color: #000;
+            overflow: hidden; /* 隐藏桃花超出部分 */
+        }
+        /* 桃花飘落特效（高密度版：每秒4朵） */
+        .peach-blossom {
+            position: absolute;
+            top: -50px;
+            color: #ffb6c1; /* 浅粉色桃花 */
+            font-size: 16px;
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 9998;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+            100% { transform: translateY(calc(100vh + 50px)) rotate(360deg); opacity: 0; }
+        }
+        /* 弹窗样式（自适应+醒目） */
+        .popup {
+            position: absolute;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 18px;
+            z-index: 9999;
+            cursor: move;
+            color: #000;
+            width: 75%;
+            max-width: 450px;
+            height: auto;
+            min-height: 120px;
+            word-wrap: break-word;
+        }
+        /* 初始弹窗（重点突出） */
+        .init-popup {
+            background-color: #87CEEB;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10000;
+            font-size: 20px;
+            padding: 25px;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #000;
+            font-weight: bold;
+        }
+        /* 隐藏所有配置相关元素 */
+        .config-panel, .show-panel-btn, .share-btn, .share-modal {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- 桃花容器 -->
+    <div id="peachBlossomContainer"></div>
+
+    <!-- 配置面板（隐藏） -->
+    <div class="config-panel" id="configPanel"></div>
+    <button class="show-panel-btn" id="showPanelBtn"></button>
+    <button class="share-btn" id="shareBtn"></button>
+    <div class="share-modal" id="shareModal"></div>
+
+    <script>
+        // 颜色列表（丰富弹窗色彩）
+        const COLORS = [
+            "#FFB6C1", "#87CEEB", "#90EE90", "#E6E6FA",
+            "#87CEFA", "#FFFFE0", "#DDA0DD", "#FF7F50",
+            "#FFC0CB", "#ADD8E6", "#F0E68C", "#FFE4E1"
+        ];
+        // 最终版语录（已替换指定句子）
+        const QUOTES = [
+            "愿与渡微仙尊结为道侣。” “固所愿也，不敢请耳。",
+            "幺幺，登仙阁惊鸿 15 年，我就开始喜欢你了，魔域的 100 年，我一直都在想你，想得快疯了。",
+            "千山风雪，送一人归来。",
+            "谢识衣，答应我，今后不要为了任何人付出生命、放弃一切。哪怕是我。",
+            "春水桃花路，你走一次就够了。", // 替换后的句子
+            "谢识衣，别看，别回头，我们走。",
+            "言卿，我现在忽然觉得，或许我当初真的没猜错。心动是真的，暧昧是真的。我没猜错，你喜欢我。",
+            "南斗神宫四十一步，步步染血。不悔，不悔。谢识衣，你是真的不悔吗？",
+            "谢识衣，原来我的重生，只是因为我想见你。我本就为你而来。"
+        ];
+        // 配置参数（按你的要求）
+        const POPUP_COUNT = 50; // 弹窗数量50个
+        const BLOSSOM_INTERVAL = 250; // 每秒生成4朵桃花（1000/4=250ms）
+
+        // 全局变量
+        let initPopup = null;
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let blossomInterval = null;
+
+        // ========== 桃花特效（高密度版） ==========
+        function createPeachBlossom() {
+            const blossom = document.createElement('div');
+            blossom.className = 'peach-blossom';
+            blossom.textContent = '❀'; // 桃花符号
+            // 随机位置/大小/透明度/速度
+            blossom.style.left = `${Math.random() * 100}%`;
+            blossom.style.fontSize = `${12 + Math.random() * 10}px`;
+            blossom.style.opacity = 0.6 + Math.random() * 0.4;
+            blossom.style.animationDuration = `${4 + Math.random() * 6}s`;
+            // 添加到页面
+            document.getElementById('peachBlossomContainer').appendChild(blossom);
+            // 飘落结束后移除，避免卡顿
+            setTimeout(() => blossom.remove(), parseFloat(blossom.style.animationDuration) * 1000);
+        }
+
+        // 启动桃花特效
+        function startPeachBlossom() {
+            if (blossomInterval) clearInterval(blossomInterval);
+            blossomInterval = setInterval(createPeachBlossom, BLOSSOM_INTERVAL);
+        }
+
+        // 停止桃花特效
+        function stopPeachBlossom() {
+            if (blossomInterval) clearInterval(blossomInterval);
+            blossomInterval = null;
+            document.getElementById('peachBlossomContainer').innerHTML = '';
+        }
+
+        // ========== 弹窗逻辑 ==========
+        // 创建初始弹窗
+        function createInitPopup() {
+            initPopup = document.createElement('div');
+            initPopup.className = 'popup init-popup';
+            initPopup.innerHTML = `<span class="close-btn">×</span><div>请叉掉这个弹窗</div>`;
+            document.body.appendChild(initPopup);
+
+            // 点击叉叉触发所有惊喜（桃花+50个弹窗）
+            initPopup.querySelector('.close-btn').addEventListener('click', () => {
+                initPopup.remove();
+                startPeachBlossom(); // 启动桃花
+                createQuotePopups(); // 生成50个语录弹窗
+            });
+
+            // 弹窗可拖动
+            makeDraggable(initPopup);
+        }
+
+        // 批量创建50个语录弹窗（分批加载，避免卡顿）
+        function createQuotePopups() {
+            for (let i = 0; i < POPUP_COUNT; i++) {
+                setTimeout(() => {
+                    // 随机选语录和颜色
+                    const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+                    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+                    // 创建弹窗
+                    const popup = document.createElement('div');
+                    popup.className = 'popup';
+                    popup.style.backgroundColor = color;
+                    popup.innerHTML = `<div>${quote}</div>`;
+                    document.body.appendChild(popup);
+
+                    // 中间优先的位置计算（避免边角）
+                    setTimeout(() => {
+                        const w = popup.offsetWidth;
+                        const h = popup.offsetHeight;
+                        const screenW = window.innerWidth;
+                        const screenH = window.innerHeight;
+                        const centerX = screenW / 2;
+                        const centerY = screenH / 2;
+
+                        // 限制在中间80%区域
+                        const x = Math.max(0, Math.min(
+                            centerX + (Math.random() - 0.5) * screenW * 0.8 - w/2,
+                            screenW - w
+                        ));
+                        const y = Math.max(0, Math.min(
+                            centerY + (Math.random() - 0.5) * screenH * 0.8 - h/2,
+                            screenH - h
+                        ));
+
+                        popup.style.left = `${x}px`;
+                        popup.style.top = `${y}px`;
+                    }, 0);
+
+                    // 弹窗可拖动+点击关闭
+                    makeDraggable(popup);
+                    popup.addEventListener('click', (e) => {
+                        if (!isDragging) popup.remove();
+                    });
+                }, i * 50); // 每50ms生成一个，更流畅
+            }
+        }
+
+        // 弹窗可拖动（兼容手机触摸）
+        function makeDraggable(element) {
+            // 鼠标事件
+            element.addEventListener('mousedown', startDrag);
+            // 触摸事件（手机）
+            element.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                startDrag({ clientX: touch.clientX, clientY: touch.clientY });
+                e.preventDefault(); // 阻止默认触摸行为
+            });
+
+            // 开始拖动
+            function startDrag(e) {
+                isDragging = true;
+                const rect = element.getBoundingClientRect();
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+                element.style.zIndex = 10001; // 拖动时置顶
+            }
+
+            // 拖动中
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    drag({ clientX: touch.clientX, clientY: touch.clientY });
+                }
+            });
+
+            // 拖动处理
+            function drag(e) {
+                if (isDragging) {
+                    element.style.left = `${e.clientX - dragOffsetX}px`;
+                    element.style.top = `${e.clientY - dragOffsetY}px`;
+                    element.style.transform = 'none';
+                }
+            }
+
+            // 结束拖动
+            document.addEventListener('mouseup', () => isDragging = false);
+            document.addEventListener('touchend', () => isDragging = false);
+        }
+
+        // ========== 页面初始化（自动启动） ==========
+        window.onload = function() {
+            createInitPopup(); // 直接显示初始弹窗
+        };
+
+        // 页面关闭时清理资源
+        window.addEventListener('beforeunload', () => {
+            stopPeachBlossom();
+        });
+    </script>
+</body>
+</html>
